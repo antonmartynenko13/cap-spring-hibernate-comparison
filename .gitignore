@@ -1,0 +1,52 @@
+### IntelliJ IDEA ###
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.idea/
+*.iml
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Java / Maven ###
+target/
+*.jar
+*.war
+*.class
+.flattened-pom.xml
+
+### Node / CDS ###
+node_modules/
+
+### SAP CAP generated artifacts ###
+srv/src/gen/
+sap-cap-java/srv/src/gen/
+srv/src/main/resources/schema-h2.sql
+sap-cap-java/srv/src/main/resources/schema-h2.sql
+srv/src/main/resources/edmx/
+sap-cap-java/srv/src/main/resources/edmx/
+
+### SQLite ###
+*.db

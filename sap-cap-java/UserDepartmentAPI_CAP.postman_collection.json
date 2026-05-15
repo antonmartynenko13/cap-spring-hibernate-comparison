@@ -1,0 +1,329 @@
+{
+  "info": {
+    "name": "UserDepartmentAPI – SAP CAP Java (OData v4)",
+    "_postman_id": "a1b2c3d4-0002-0002-0002-000000000002",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Manual test collection for the sap-cap-java project.\n\nAll URLs go through the OData v4 service at /odata/v4/UserDepartmentService.\n\nKey OData differences vs plain REST (see spring-boot collection):\n- Entity IDs are referenced as /Users(guid'...')\n- Updates use PATCH, not PUT\n- Address fields are flat: address_country and address_city (CDS flattens structured types to columns)\n- Function call URL ends with () e.g. getUsersCount()\n- Action parameters go in the POST body as a JSON object\n\nRun CREATE requests first to populate {{userId}} and {{deptId}}."
+  },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:8080" },
+    { "key": "service_path",  "value": "/odata/v4/UserDepartmentService" },
+    { "key": "admin_user",    "value": "admin1" },
+    { "key": "admin_pass",    "value": "admin1pass" },
+    { "key": "user_user",     "value": "user1" },
+    { "key": "user_pass",     "value": "user1pass" },
+    { "key": "userId",        "value": "" },
+    { "key": "deptId",        "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Service Root",
+      "item": [
+        {
+          "name": "GET Service Document",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{service_path}}", "host": ["{{base_url}}{{service_path}}"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "Returns the OData service document listing all entity sets and operations."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users CRUD",
+      "item": [
+        {
+          "name": "GET All Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{service_path}}/Users", "host": ["{{base_url}}{{service_path}}"], "path": ["Users"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] }
+          }
+        },
+        {
+          "name": "GET Users – paginated ($top, $skip, $orderby)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{service_path}}/Users?$top=5&$skip=0&$orderby=lastName asc&$count=true",
+              "host": ["{{base_url}}{{service_path}}"],
+              "path": ["Users"],
+              "query": [
+                { "key": "$top",      "value": "5",            "description": "Max items to return (≈ page size)" },
+                { "key": "$skip",     "value": "0",            "description": "Items to skip (page * size)" },
+                { "key": "$orderby",  "value": "lastName asc", "description": "Sort field and direction" },
+                { "key": "$count",    "value": "true",         "description": "Include @odata.count in response for total record count" }
+              ]
+            },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "OData pagination is built-in — no Java handler code required.\n$count=true adds @odata.count to the response envelope with the total number of matching records.\n\nFor page 2 (0-based): $skip=5&$top=5\n\nSpring Boot equivalent: GET /api/users?page=0&size=5&sort=lastName,asc\nReturns a Page<T> envelope with totalElements and totalPages."
+          }
+        },
+        {
+          "name": "GET All Users – with $expand",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{service_path}}/Users?$expand=departments($expand=department)",
+              "host": ["{{base_url}}{{service_path}}"],
+              "path": ["Users"],
+              "query": [{ "key": "$expand", "value": "departments($expand=department)" }]
+            },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "OData $expand is a built-in feature. No equivalent query parameter exists in the Spring Boot project – you would need a custom endpoint."
+          }
+        },
+        {
+          "name": "CREATE User (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.ID) { pm.collectionVariables.set('userId', json.ID); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"address_country\": \"GERMANY\",\n  \"address_city\": \"Berlin\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Users", "host": ["{{base_url}}{{service_path}}"], "path": ["Users"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] },
+            "description": "Note: address fields are sent flat as address_country and address_city (CDS structured type is flattened to columns). In the Spring Boot project the same fields are also flat."
+          }
+        },
+        {
+          "name": "CREATE User – 403 as user1",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"email\": \"jane@example.com\",\n  \"address_country\": \"IRELAND\",\n  \"address_city\": \"Dublin\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Users", "host": ["{{base_url}}{{service_path}}"], "path": ["Users"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "Expects HTTP 403. Role restriction is declared in user-department-service.cds via @restrict."
+          }
+        },
+        {
+          "name": "GET User by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{service_path}}/Users({{userId}})", "host": ["{{base_url}}{{service_path}}"], "path": ["Users({{userId}})"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] }
+          }
+        },
+        {
+          "name": "UPDATE User – PATCH (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lastName\": \"Doe-Updated\",\n  \"address_city\": \"Hamburg\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Users({{userId}})", "host": ["{{base_url}}{{service_path}}"], "path": ["Users({{userId}})"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] },
+            "description": "OData uses PATCH for partial updates, not PUT. Only the supplied fields are changed. Spring Boot uses PUT with all fields required."
+          }
+        },
+        {
+          "name": "DELETE User (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}{{service_path}}/Users({{userId}})", "host": ["{{base_url}}{{service_path}}"], "path": ["Users({{userId}})"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Departments CRUD",
+      "item": [
+        {
+          "name": "GET All Departments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{service_path}}/Departments", "host": ["{{base_url}}{{service_path}}"], "path": ["Departments"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] }
+          }
+        },
+        {
+          "name": "GET Departments – paginated ($top, $skip, $orderby)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{service_path}}/Departments?$top=5&$skip=0&$orderby=name asc&$count=true",
+              "host": ["{{base_url}}{{service_path}}"],
+              "path": ["Departments"],
+              "query": [
+                { "key": "$top",     "value": "5",        "description": "Max items to return" },
+                { "key": "$skip",    "value": "0",        "description": "Items to skip" },
+                { "key": "$orderby", "value": "name asc", "description": "Sort field and direction" },
+                { "key": "$count",   "value": "true",     "description": "Include @odata.count in response" }
+              ]
+            },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "Same OData pagination pattern as Users.\n\nSpring Boot equivalent: GET /api/departments?page=0&size=5&sort=name,asc"
+          }
+        },
+        {
+          "name": "CREATE Department (admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.ID) { pm.collectionVariables.set('deptId', json.ID); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Departments", "host": ["{{base_url}}{{service_path}}"], "path": ["Departments"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] }
+          }
+        },
+        {
+          "name": "GET Department by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}{{service_path}}/Departments({{deptId}})", "host": ["{{base_url}}{{service_path}}"], "path": ["Departments({{deptId}})"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] }
+          }
+        },
+        {
+          "name": "UPDATE Department – PATCH (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering & Design\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Departments({{deptId}})", "host": ["{{base_url}}{{service_path}}"], "path": ["Departments({{deptId}})"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] }
+          }
+        },
+        {
+          "name": "DELETE Department (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}{{service_path}}/Departments({{deptId}})", "host": ["{{base_url}}{{service_path}}"], "path": ["Departments({{deptId}})"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Custom Operations",
+      "description": "OData Function (GET, read-only) and OData Action (POST, can mutate state).\nSpring Boot equivalents are in the 'Custom Operations' folder of the Spring Boot collection.",
+      "item": [
+        {
+          "name": "Get Users Count (OData Function)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{base_url}}{{service_path}}/getUsersCount()",
+              "host": ["{{base_url}}{{service_path}}"],
+              "path": ["getUsersCount()"]
+            },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "OData Function – read-only, no side effects.\nThe trailing () is part of the OData URI syntax for functions.\nReturns: {\"value\": N}\n\nSpring Boot equivalent: GET /api/users/count"
+          }
+        },
+        {
+          "name": "GET Users Count – OData $count (built-in, no custom code)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/plain" }],
+            "url": {
+              "raw": "{{base_url}}{{service_path}}/Users/$count",
+              "host": ["{{base_url}}{{service_path}}"],
+              "path": ["Users", "$count"]
+            },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{user_user}}" }, { "key": "password", "value": "{{user_pass}}" }] },
+            "description": "OData built-in $count segment – returns a plain integer (not JSON) with no custom handler required.\nCompare with 'Get Users Count (OData Function)' above which uses a manually declared CDS function + Java handler.\n\nYou can also combine $count with filters, e.g.:\n  /Users/$count?$filter=address/country eq 'GERMANY'\n\nSpring Boot has no equivalent – you would need a custom endpoint."
+          }
+        },
+        {
+          "name": "Assign User to Department (OData Action)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userID\": \"{{userId}}\",\n  \"departmentID\": \"{{deptId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}{{service_path}}/assignUserToDepartment",
+              "host": ["{{base_url}}{{service_path}}"],
+              "path": ["assignUserToDepartment"]
+            },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] },
+            "description": "OData Action – can mutate state. Parameters go in the POST body.\nRun CREATE User and CREATE Department first to populate {{userId}} and {{deptId}}.\n\nSpring Boot equivalent: POST /api/users/{id}/assign-department\nNote: Spring Boot takes the userId in the URL path; CAP takes both IDs in the action body."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Validation Errors",
+      "description": "Requests that demonstrate validation. Expect HTTP 400.",
+      "item": [
+        {
+          "name": "CREATE User – blank firstName (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john@example.com\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Users", "host": ["{{base_url}}{{service_path}}"], "path": ["Users"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] },
+            "description": "Triggers the @Before handler in UserServiceHandler.validateUser(). Returns OData error format."
+          }
+        },
+        {
+          "name": "CREATE User – invalid email (400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"not-an-email\"\n}"
+            },
+            "url": { "raw": "{{base_url}}{{service_path}}/Users", "host": ["{{base_url}}{{service_path}}"], "path": ["Users"] },
+            "auth": { "type": "basic", "basic": [{ "key": "username", "value": "{{admin_user}}" }, { "key": "password", "value": "{{admin_pass}}" }] }
+          }
+        }
+      ]
+    }
+  ]
+}

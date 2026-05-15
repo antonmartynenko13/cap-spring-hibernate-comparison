@@ -1,0 +1,25 @@
+---
+cds:
+  datasource.auto-config.enabled: false
+
+  security:
+    # Mock users for local development.
+    # Spring Boot equivalent: InMemoryUserDetailsManager in SecurityConfiguration.java
+    # These users are only active when no XSUAA/IAS service binding is present.
+    mock:
+      enabled: true
+      users:
+        admin1:
+          password: admin1pass
+          roles:
+            - admin
+            - user
+        user1:
+          password: user1pass
+          roles:
+            - user
+
+---
+spring:
+  config.activate.on-profile: default
+  sql.init.schema-locations: classpath:schema-h2.sql

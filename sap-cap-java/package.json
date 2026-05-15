@@ -1,0 +1,6 @@
+{
+  "name": "sap-cap-java-demo",
+  "version": "1.0.0",
+  "description": "SAP CAP Java demo – User/Department OData v4 API",
+  "license": "ISC"
+}
