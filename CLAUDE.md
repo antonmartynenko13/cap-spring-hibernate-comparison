@@ -59,6 +59,30 @@ Multi-module Maven project (root `pom.xml` + `srv/pom.xml`):
 | `admin1` | `admin1pass` | admin – full CRUD + actions |
 | `user1` | `user1pass` | user – read-only |
 
+## Testing Guidelines
+
+**Naming:** `[UnitOfWork_StateUnderTest_ExpectedBehavior]`
+```
+enrollStudent_WhenCourseIsFull_ShouldThrowException
+```
+
+**Structure:** Always divide the test body into three blocks with comments:
+```java
+// given
+var student = TestDataGenerator.createDefaultStudent();
+var course = TestDataGenerator.createFullCourse();
+
+// when
+Result result = service.enrollStudent(student, course);
+
+// then
+assertFalse(result.isSuccess());
+```
+
+**Test data:** Never create entities manually inline. Use dedicated generator classes (e.g. `TestDataGenerator`) to produce valid objects.
+
+**Context cleanup:** When tests share a Spring context or database, reset state in `@BeforeEach` / `@AfterEach` (e.g. `repository.deleteAll()`) so tests are independent.
+
 ## Key Intentional Differences Between Projects
 
 | Aspect | Spring Boot | CAP |

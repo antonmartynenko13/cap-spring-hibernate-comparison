@@ -8,8 +8,10 @@ This project is paired with [../sap-cap-java](../sap-cap-java/README.md), which 
 
 ## Prerequisites
 
-- Java 21
+- Java 17+
 - Maven 3.8+
+
+> **IDE:** For the full IDE experience, open `spring-boot-mvc-hibernate/` as a separate project in its own window. Opening the repository root is possible but the IDE will not index the Maven module correctly — most source files will appear unresolved.
 
 ---
 
@@ -78,7 +80,7 @@ The application starts on **http://localhost:8080**.
   "firstName": "John",
   "lastName": "Doe",
   "email": "john.doe@example.com",
-  "country": "Germany",
+  "country": "GERMANY",
   "city": "Berlin"
 }
 ```
@@ -90,7 +92,34 @@ The application starts on **http://localhost:8080**.
 }
 ```
 
-**Note:** Address fields (`country`, `city`) are flat in this API. In the CAP project they are nested inside an `address` object – this difference is a direct consequence of how each framework serialises an embedded/structured type.
+**Note:** Address fields (`country`, `city`) are flat in both this API and the CAP project. The CAP OData service also exposes them as flat fields (`address_country`, `address_city`) because the CDS compiler flattens structured types to columns.
+
+---
+
+## Testing
+
+### Unit tests (Mockito, no Spring context)
+
+```bash
+mvn test
+```
+
+### Integration tests (MockMvc + real H2)
+
+```bash
+mvn failsafe:integration-test failsafe:verify
+```
+
+### All tests
+
+```bash
+mvn verify
+```
+
+| Suite | Classes | What is covered |
+|-------|---------|-----------------|
+| Unit | `UserServiceTest`, `DepartmentServiceTest` | Service logic with mocked repositories |
+| Integration | `UserControllerIT`, `DepartmentControllerIT` | Full HTTP stack: routing, validation, auth, real DB |
 
 ---
 
@@ -109,7 +138,7 @@ Available at **http://localhost:8080/h2-console**
 ## Key Files
 
 | Concept | File |
-|---|---|
+|---------|------|
 | Security configuration | [`config/SecurityConfiguration.java`](src/main/java/com/example/springdemo/config/SecurityConfiguration.java) |
 | User entity (with embedded Address and many-to-many) | [`entity/User.java`](src/main/java/com/example/springdemo/entity/User.java) |
 | Department entity | [`entity/Department.java`](src/main/java/com/example/springdemo/entity/Department.java) |

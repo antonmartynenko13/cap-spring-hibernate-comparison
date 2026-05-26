@@ -14,6 +14,22 @@ This project is paired with [../spring-boot-mvc-hibernate](../spring-boot-mvc-hi
 
 ---
 
+## IDE Setup
+
+For the full IDE experience, open `sap-cap-java/` as a separate project in its own window. Opening the repository root is possible but the IDE will not resolve the multi-module Maven layout correctly — most source files will appear unresolved.
+
+After opening `sap-cap-java/` as a project, two additional steps are required:
+
+1. **Run the build once** (`mvn generate-sources` or `mvn clean package`) so the `cds-maven-plugin` generates the Java POJOs into `srv/src/gen/java/`. Without this step those classes do not exist on disk and the IDE will show red import errors everywhere.
+
+2. **Mark the generated-sources directory as a source root.** After the first build, right-click `srv/src/gen/java/` in the project tree and choose:
+   - IntelliJ IDEA: **Mark Directory as → Generated Sources Root**
+   - VS Code (Extension Pack for Java): the directory should be picked up automatically once it exists; if not, add it to `java.project.sourcePaths` in `.vscode/settings.json`
+
+After these two steps all `cds.gen.*` classes resolve correctly and code navigation works.
+
+---
+
 ## Build
 
 ```bash
@@ -103,15 +119,12 @@ Returns the OData service document listing all entity sets and operations.
   "firstName": "John",
   "lastName": "Doe",
   "email": "john.doe@example.com",
-  "address": {
-    "country": "Germany",
-    "city": "Berlin"
-  }
+  "address_country": "GERMANY",
+  "address_city": "Berlin"
 }
 ```
 
-> **Note:** The `address` field is a nested object here because the CDS `type Address` is represented as a structured type in OData JSON. In the Spring Boot project the same data is sent as flat fields (`"country": "..."`, `"city": "..."`).
-
+> **Note:** Address fields are flat (`address_country`, `address_city`) because the CDS compiler flattens structured types to columns. Both this project and the Spring Boot project use flat fields — the field names just differ.
 **OData Function – Get Users Count**  
 `GET /odata/v4/UserDepartmentService/getUsersCount()`
 ```json
@@ -159,10 +172,38 @@ The only Java code you need to write. Handlers intercept the standard CRUD lifec
 ## Key Files
 
 | Concept | File |
-|---|---|
+|---------|------|
 | Domain model (entities, Address type) | [`db/data-model.cds`](db/data-model.cds) |
 | Service + role restrictions + Function + Action | [`srv/user-department-service.cds`](srv/user-department-service.cds) |
 | Mock users (Basic Auth) | [`srv/src/main/resources/application.yaml`](srv/src/main/resources/application.yaml) |
 | Validation + Function + Action handlers | [`srv/src/main/java/com/example/capdemo/handlers/UserServiceHandler.java`](srv/src/main/java/com/example/capdemo/handlers/UserServiceHandler.java) |
-| Department validation handler | [`srv/src/main/java/com/example/capdemo/handlers/DepartmentServiceHandler.java`](srv/src/main/java/com/example/capdemo/handlers/DepartmentServiceHandler.java) |
 | Build configuration (CDS plugin lifecycle) | [`srv/pom.xml`](srv/pom.xml) |
+
+---
+
+## Testing
+
+Run commands from the `sap-cap-java/` directory.
+
+### Unit tests (Mockito, no Spring context)
+
+```bash
+mvn -pl srv -am test
+```
+
+### Integration tests (MockMvc + real H2)
+
+```bash
+mvn -pl srv -am test-compile failsafe:integration-test failsafe:verify
+```
+
+### All tests
+
+```bash
+mvn -pl srv -am verify
+```
+
+| Suite | Class | What is covered |
+|-------|-------|-----------------|
+| Unit | `UserServiceHandlerTest` | Handler logic with mocked `PersistenceService`: validation, Function, Action |
+| Integration | `UserServiceIT` | Full OData HTTP stack: CRUD, Function, Action, auth, real H2 |
